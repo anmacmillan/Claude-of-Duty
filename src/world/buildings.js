@@ -357,7 +357,10 @@ function buildFacade(A, rng, spec, info, ctx) {
         const wh = f === 0 ? 1.62 : 1.48;
         const o = { x: bx, y: (f === 0 ? 1.05 : 0.95) + wh / 2, w: ww, h: wh, kind };
         openings.push(o);
-        const broken = rng.float() < (spec.damage ?? 0.15) * 1.6;
+        // Explorer build: a smashed window every fifth bay said "firefight". A
+        // rare one still says "old town". Same single rng draw either way, so
+        // the placement stream downstream is untouched.
+        const broken = rng.float() < (spec.damage ?? 0.15) * 0.15;
         // One window per bay is not the same window per bay: pick a state so the
         // facade carries open casements, boarded holes, shut louvres, curtains and
         // the occasional lit room instead of one repeated glazed panel.
@@ -385,7 +388,7 @@ function buildFacade(A, rng, spec, info, ctx) {
         deco.push(() =>
           windowUnit(A, pm, o, rng, {
             t,
-            broken: rng.float() < 0.2,
+            broken: rng.float() < 0.03,
             state: st,
             back: !spec.enterable,
             shutters: false,
@@ -540,7 +543,9 @@ function buildFacade(A, rng, spec, info, ctx) {
   }
 
   // ---- bullet pocks, clustered where somebody took cover ----
-  if (A.has('pock')) {
+  // Explorer build: nobody has taken cover here. `spec.damage` still drives the
+  // spalled render and patched plaster above, which read as age rather than war.
+  if (false && A.has('pock')) {
     const bursts = Math.round(dmg * 6) + (openFace ? 2 : 0);
     for (let i = 0; i < bursts; i++) {
       const cx = rng.range(-len / 2 + 0.4, len / 2 - 0.4);

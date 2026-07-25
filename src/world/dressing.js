@@ -333,16 +333,17 @@ export function dressStreet(A, rng) {
   // cameras' keepout zones.
   A.jitter = jitterRig();
   marketStalls(A, rng);
-  barriers(A, rng);
-  sandbagEmplacements(A, rng);
-  wrecks(A, rng);
+  // The four war set-pieces — jersey barriers, sandbag emplacements, burnt-out
+  // cars and rubble piles — are what made this street read as a battlefield.
+  // The explorer build is a town somebody still lives in, so they are out. The
+  // functions stay defined: their placement data is good, and a later "after the
+  // storm" mood might want them back.
   palms(A, rng);
   streetLamps(A, rng);
   overheadLines(A, rng);
   facadeHangings(A, rng);
-  rubblePiles(A, rng);
   tyreStacks(A, rng);
-  coverClusters(A, rng);
+  streetClusters(A, rng);
   streetFloor(A, rng);
   A.jitter = null;
 }
@@ -1361,7 +1362,7 @@ function tyreStacks(A, rng) {
  * Deliberate cover clusters at chest height along the street, so the map plays:
  * something to break contact behind every ~12 m of open ground.
  */
-function coverClusters(A, rng) {
+function streetClusters(A, rng) {
   const spots = [
     [0.6, 0.9, 0.35],
     [-2.2, 8.6, 1.2],
@@ -1372,8 +1373,23 @@ function coverClusters(A, rng) {
   ];
   for (const [x, z, ry] of spots) {
     const y = groundY(x, z);
-    // six squashed courses ≈ 0.8 m: cover you can shoot over crouched, not standing
-    sandbagWall(A, rng, x, z, ry, rng.range(1.8, 2.8), 6);
+    // Was a six-course sandbag wall: waist-high cover you could shoot over. The
+    // spots are good — they break the long sightline down the street — so they
+    // keep their mass as stacked market crates and a barrel instead.
+    const run = rng.range(1.8, 2.8);
+    const stack = Math.max(2, Math.round(run * 1.6));
+    for (let i = 0; i < stack; i++) {
+      const t = (i / Math.max(1, stack - 1) - 0.5) * run;
+      const cx = x + Math.cos(ry) * t;
+      const cz = z - Math.sin(ry) * t;
+      if (!isOpen(cx, cz, 0.35)) continue;
+      const gy = groundY(cx, cz);
+      A.put(rng.pick(['crate_a', 'crate_b', 'crate_flat']), cx, gy, cz, ry + rng.range(-0.2, 0.2), rng.range(0.9, 1.05), [1, 1, 1]);
+      if (rng.float() < 0.45) {
+        A.put(rng.pick(['crate_flat', 'tray', 'box_card_a']), cx, gy + 0.42, cz, ry + rng.range(-0.4, 0.4), rng.range(0.8, 0.95), [1, 1, 1]);
+      }
+    }
+    groundSkirt(A, rng, x, y, z, run * 0.5 + 0.3, { pebbles: rng.int(2, 5) });
     const bx = x + Math.cos(ry + 1.57) * 1.5;
     const bz = z - Math.sin(ry + 1.57) * 1.5;
     if (isOpen(bx, bz, 0.4)) {
@@ -2073,13 +2089,14 @@ export function buildGate(A, rng) {
   });
   A.put('sat_dish', xT0 + 0.9, hT + 0.3, zT + 0.4, 0.7, 1, [1, 1.3, 1]);
 
-  // sandbag emplacements on the ramparts, and a crate of ammunition
-  sandbagWall(A, rng, xL0 + 1.9, z - 0.15, 0.0, 2.4, 3, hL + 0.16);
-  sandbagWall(A, rng, xR0 + 1.7, zR - 0.15, 0.0, 1.9, 3, hR + 0.16);
-  sandbagWall(A, rng, (xT0 + xT1) / 2, zT - 0.25, 0.0, 2.2, 4, hT + 0.16);
+  // Was sandbag emplacements on the ramparts and a crate of ammunition. The
+  // ramparts are old masonry, not a firing position: a water butt and a stack
+  // of crates left on the walkway say the same thing about scale and human use
+  // without saying anybody is expecting an attack.
   A.skirts = false;
   A.put('crate_c', xL1 - 1.2, hL + 0.16, z - 0.6, 0.4, 1, [1, 1.3, 1]);
-  A.put('barrel_rust', xR0 + 0.6, hR + 0.16, zR - 0.5, 0.2, 1, [1, 1.4, 1]);
+  A.put('barrel_wood', xR0 + 0.6, hR + 0.16, zR - 0.5, 0.2, 1, [1, 1.4, 1]);
+  A.put('crate_flat', xL0 + 1.9, hL + 0.16, z - 0.15, 0.15, 1, [1, 1, 1]);
   A.skirts = true;
 
   // The spandrel over the arch, built as a wall panel with a pointed hole so
@@ -2131,15 +2148,15 @@ export function buildGate(A, rng) {
       masks: [0.7, 0.6, 0.4],
     });
   }
-  // a low, irregular parapet along the walkway's outer edge, sandbags behind it
+  // a low, irregular parapet along the walkway's outer edge
   merlonRun(A, rng, -span / 2 - 0.6, span / 2 + 0.6, z + 0.76, t, bodyH + 0.22, {
     depth: 0.34,
     set: 0.02,
   });
-  sandbagWall(A, rng, -0.9, z + 0.15, 0.0, 2.0, 3, bodyH + 0.34);
 
-  // guard hut and checkpoint clutter under the arch
-  const hutX = -span / 2 - 1.2;
+  // Under the arch: was a guard hut ringed with jersey barriers and sandbags.
+  // Now a mounting block and a pair of planters, so the gate reads as a way in
+  // rather than a way of stopping people.
   A.put('block_big', 0.0, 0.0, z + 3.2, 0.1, 1, [1, 1.2, 1]);
   A.box('concrete', 0, 0.48, z + 3.2, 1.3, 0.96, 0.9);
   for (const [bx, bz, br] of [
@@ -2148,11 +2165,8 @@ export function buildGate(A, rng) {
     [-1.4, z - 2.4, 1.5],
     [2.0, z - 2.8, 0.2],
   ]) {
-    A.put('jersey', bx, 0, bz, br, 1, [1, rng.range(0.9, 1.3), 1]);
-    A.box('concrete', bx, 0.46, bz, 0.62, 0.92, 1.9, br);
+    A.put('planter', bx, groundY(bx, bz), bz, br, rng.range(0.9, 1.15), [1, rng.range(0.9, 1.3), 1]);
   }
-  sandbagWall(A, rng, -1.9, z + 4.6, 0.1, 2.4, 4);
-  sandbagWall(A, rng, 2.1, z - 4.4, 0.0, 2.0, 3);
   for (let i = 0; i < 24; i++) {
     const px = rng.range(-outerW / 2, outerW / 2);
     const pz = z + rng.range(-5, 5);
