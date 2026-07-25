@@ -30,8 +30,14 @@ const lockstep = capture && params.get('lockstep') === '1';
 // on-screen controls up on a desktop for testing.
 const touchDevice = params.get('touch') === '1' || (params.get('touch') !== '0' && isTouchDevice());
 
+// `low` rather than `potato` for the touch default. The target devices are an
+// A14 iPad and an A15 iPhone, both with 4 GB: the renderer caps pixel ratio at
+// 1.5, so `low`'s 0.72 render scale works out around 1274x886 on the iPad with
+// no TAA, GTAO, SSR or volumetrics in the frame. `potato`'s 0.5 scale looks
+// soft on a retina screen for no reason on that hardware. Older or hotter
+// devices can drop with ?q=potato.
 const config = createConfig({
-  quality: params.get('q') ?? (touchDevice ? 'potato' : 'ultra'),
+  quality: params.get('q') ?? (touchDevice ? 'low' : 'ultra'),
   deterministic: capture,
 });
 
