@@ -51,6 +51,18 @@ const CSS = `
 #ow-touch .tools { position:absolute; right:20px; top:96px; display:flex; flex-direction:column; gap:10px;
   pointer-events:none; }
 #ow-touch .tools button { position:relative; right:auto; top:auto; width:64px; height:44px; }
+
+/* Phone portrait. On a 390px-wide screen CROUCH at right:140px lands on top of
+   the movement zone (left 48% = 187px), so the thumb that means "walk" hits a
+   button instead. Stack it above JUMP and pull the tool column in. */
+@media (max-width: 560px) {
+  #ow-touch .move { width:100%; height:46%; }
+  #ow-touch .look { width:100%; height:54%; top:0; }
+  #ow-touch .jump { right:18px; bottom:28px; width:84px; height:84px; }
+  #ow-touch .crouch { right:24px; bottom:126px; width:72px; height:56px; }
+  #ow-touch .tools { right:14px; top:70px; gap:8px; }
+  #ow-touch .tools button { width:58px; height:40px; font-size:12px; }
+}
 `;
 
 /**

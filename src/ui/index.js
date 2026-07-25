@@ -286,7 +286,11 @@ export class UiSystem {
   resize(w, h, ctx) {
     this.vw = w;
     this.vh = h;
-    this.k = clamp(h / 1080, 0.62, 2.4);
+    // Height alone sizes the HUD wrongly on a phone held upright: a 390x844
+    // screen is tall enough to score k=0.78, which puts a 139px minimap across
+    // a third of the width and runs the compass strip off the left edge. Take
+    // the smaller of the two axes so narrow screens shrink the chrome.
+    this.k = clamp(Math.min(h / 1080, w / 1500), 0.42, 2.4);
     this.root.style.setProperty('--k', this.k.toFixed(4));
     this.compass.setScale(this.k);
     this.minimap.resize(this.k);
