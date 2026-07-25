@@ -10,11 +10,93 @@
       html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
       body { font-family: "Inter", "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; }
       #game { display: block; width: 100vw; height: 100vh; touch-action: none; cursor: none; }
+
+      /* Boot overlay. Without it a slow or stuck boot is indistinguishable from
+         a broken one: you get a black screen and no way to tell which. */
+      #boot { position: fixed; inset: 0; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 14px; z-index: 200;
+        background: #0b0d10; color: #e8e6e1; text-align: center; padding: 24px;
+        transition: opacity .5s ease; }
+      #boot.gone { opacity: 0; pointer-events: none; }
+      #boot h1 { font-size: 15px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase;
+        color: #b9b3a8; }
+      #boot .bar { width: min(280px, 70vw); height: 3px; background: rgba(255,255,255,.12);
+        border-radius: 2px; overflow: hidden; }
+      #boot .bar i { display: block; height: 100%; width: 0%; background: #d8a24a;
+        transition: width .35s ease; }
+      #boot .stage { font-size: 13px; color: #8d877d; min-height: 1.2em; }
+      #boot .err { display: none; max-width: 640px; font: 12px/1.6 ui-monospace, monospace;
+        color: #f0a0a0; white-space: pre-wrap; text-align: left; background: rgba(255,255,255,.04);
+        padding: 12px; border-radius: 8px; }
+      #boot .slow { display: none; font-size: 12px; color: #8d877d; max-width: 420px; line-height: 1.5; }
     </style>
   </head>
   <body>
     <canvas id="game"></canvas>
     <div id="ui"></div>
+    <div id="boot">
+      <h1>Loading the world</h1>
+      <div class="bar"><i></i></div>
+      <div class="stage">starting up</div>
+      <div class="slow"></div>
+      <pre class="err"></pre>
+    </div>
+    <script>
+      // Deliberately not a module: this must run and be able to report even if
+      // the module graph fails to parse or a subsystem throws during import.
+      (function () {
+        var el = document.getElementById('boot');
+        var bar = el.querySelector('.bar i');
+        var stage = el.querySelector('.stage');
+        var err = el.querySelector('.err');
+        var slow = el.querySelector('.slow');
+        var done = false;
+
+        window.__BOOT__ = {
+          stage: function (text, pct) {
+            if (done) return;
+            stage.textContent = text;
+            if (typeof pct === 'number') bar.style.width = Math.round(pct * 100) + '%';
+          },
+          fail: function (message) {
+            done = true;
+            stage.textContent = 'It could not start';
+            err.style.display = 'block';
+            err.textContent = String(message);
+            slow.style.display = 'block';
+            slow.textContent = 'Send this text to Dad and he can fix it.';
+          },
+          done: function () {
+            done = true;
+            el.classList.add('gone');
+            setTimeout(function () { el.remove(); }, 600);
+          },
+        };
+
+        // If boot has not finished in 20s, say so rather than sitting black.
+        setTimeout(function () {
+          if (done) return;
+          slow.style.display = 'block';
+          slow.textContent =
+            'This is taking longer than it should. If nothing happens in another few seconds, ' +
+            'reload the page and it will start in a simpler mode.';
+        }, 20000);
+
+        window.addEventListener('error', function (e) {
+          if (!done) window.__BOOT__.fail(e.message + '\n' + (e.filename || '') + ':' + (e.lineno || ''));
+        });
+        window.addEventListener('unhandledrejection', function (e) {
+          if (!done) window.__BOOT__.fail('Unhandled: ' + (e.reason && (e.reason.stack || e.reason.message) || e.reason));
+        });
+
+        // WebGL dying after a good start is the other way to get a black screen.
+        var canvas = document.getElementById('game');
+        canvas.addEventListener('webglcontextlost', function (e) {
+          e.preventDefault();
+          if (!done) window.__BOOT__.fail('The graphics context was lost. This usually means the device ran out of memory.');
+        });
+      })();
+    </script>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

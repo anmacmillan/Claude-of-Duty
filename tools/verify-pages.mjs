@@ -20,6 +20,8 @@ const bootMs = Date.now() - t0;
 const info = await p.evaluate(() => {
   const e = window.__ENGINE__;
   return {
+    bootOverlayCleared: !document.getElementById('boot'),
+    diag: window.__DIAG__,
     quality: e.ctx.config.quality,
     touchOverlay: !!document.getElementById('ow-touch'),
     hasExplorer: !!e.ctx.peek('explorer'),

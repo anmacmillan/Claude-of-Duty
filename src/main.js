@@ -58,10 +58,41 @@ engine
   .add(AudioSystem)
   .add(ExplorerSystem);
 
+const boot = globalThis.__BOOT__ ?? { stage() {}, fail() {}, done() {} };
+boot.stage('building the world', 0.15);
+
+// What the device actually reports, captured before anything can go wrong with
+// it. When a boot fails on hardware we cannot hold, this is the difference
+// between a diagnosis and a guess.
+window.__DIAG__ = (() => {
+  try {
+    const probe = document.createElement('canvas').getContext('webgl2');
+    if (!probe) return { webgl2: false, note: 'no WebGL2 context — this device cannot run it' };
+    const info = probe.getExtension('WEBGL_debug_renderer_info');
+    return {
+      webgl2: true,
+      renderer: info ? probe.getParameter(info.UNMASKED_RENDERER_WEBGL) : 'hidden',
+      vendor: info ? probe.getParameter(info.UNMASKED_VENDOR_WEBGL) : 'hidden',
+      maxTexture: probe.getParameter(probe.MAX_TEXTURE_SIZE),
+      colorBufferFloat: !!probe.getExtension('EXT_color_buffer_float'),
+      floatLinear: !!probe.getExtension('OES_texture_float_linear'),
+      parallelCompile: !!probe.getExtension('KHR_parallel_shader_compile'),
+      dpr: globalThis.devicePixelRatio,
+      screen: `${screen.width}x${screen.height}`,
+      ua: navigator.userAgent,
+    };
+  } catch (e) {
+    return { error: String(e) };
+  }
+})();
+console.info('[boot] device', window.__DIAG__);
+if (params.get('diag') === '1') boot.fail(JSON.stringify(window.__DIAG__, null, 2));
+
 try {
   await engine.init();
 } catch (err) {
   console.error('[boot] init failed', err);
+  boot.fail(err.stack ?? err.message);
   document.body.insertAdjacentHTML(
     'beforeend',
     `<pre style="position:fixed;inset:0;padding:2rem;color:#f66;background:#000;
@@ -93,10 +124,33 @@ if (touchUi) console.info('[boot] touch controls installed');
 // lockstep in src/dev/shots.js; (2) `will-change: transform` on the compass strip
 // cached a composited-layer raster taken at a wall-clock-dependent moment — fixed
 // in src/ui/style.js.
-const warmup = params.get('prewarm') === '0' ? { ok: false, reason: 'disabled by ?prewarm=0' } : await prewarm(engine);
+//
+// TOUCH DEVICES: prewarm is awaited, so anything that stops it resolving stops
+// the boot dead — the touch overlay is already up by this point, which is
+// exactly the "buttons on a black screen" a real iPad reported. It leans on
+// compileAsync / KHR_parallel_shader_compile, which iOS Safari handles poorly.
+// So it is off by default on touch (?prewarm=1 forces it back on), and
+// wherever it does run it now races a timeout it cannot outlive. Losing the
+// prewarm costs some first-minute hitching. Losing the boot costs everything.
+const prewarmWanted = params.get('prewarm') === '1' || (params.get('prewarm') !== '0' && !touchDevice);
+
+const withTimeout = (promise, ms, onTimeout) =>
+  Promise.race([
+    promise,
+    new Promise((resolve) => setTimeout(() => resolve(onTimeout), ms)),
+  ]);
+
+let warmup;
+if (!prewarmWanted) {
+  warmup = { ok: false, reason: touchDevice ? 'skipped on touch device' : 'disabled by ?prewarm=0' };
+} else {
+  boot.stage('compiling shaders', 0.5);
+  warmup = await withTimeout(prewarm(engine), 25000, { ok: false, reason: 'timed out after 25s, starting anyway' });
+}
 console.info('[boot] prewarm', warmup);
 window.__PREWARM__ = warmup;
 
+boot.stage('almost there', 0.9);
 engine.start();
 
 // Capture harness handshake: only flag ready once a frame has actually landed.
@@ -109,11 +163,15 @@ const BOOT_FRAMES = 3;
 if (lockstep) {
   await shotApi.pump(BOOT_FRAMES);
   window.__READY__ = true;
+  boot.done();
 } else {
   let warm = 0;
   const readyProbe = () => {
     if (++warm >= BOOT_FRAMES) {
       window.__READY__ = true;
+      // Only now, with real frames on the canvas, is it safe to lift the
+      // overlay. Lifting it any earlier just shows black with more confidence.
+      boot.done();
       return;
     }
     requestAnimationFrame(readyProbe);
