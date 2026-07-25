@@ -248,7 +248,6 @@ export class PhysicsSystem {
     this._onExplosion = (e) => this.explode(e);
     this._onDeath = (e) => this._handleDeath(e);
     ctx.events.on('explosion', this._onExplosion);
-    ctx.events.on('actor:death', this._onDeath);
 
     // The level may not exist yet — `world` builds during its own init and can
     // stream more in later. We rescan until something shows up; any explicit

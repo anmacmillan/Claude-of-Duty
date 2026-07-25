@@ -185,9 +185,7 @@ export class PlayerSystem {
 
     // ---- incoming damage / suppression ----------------------------------
     const on = (type, fn) => this._offEvents.push(ctx.events.on(type, fn));
-    on('damage:dealt', (e) => this._onDamageDealt(e));
     on('explosion', (e) => this._onExplosion(e));
-    on('bullet:impact', (e) => this._onBulletImpact(e));
 
     console.info(
       `[player] spawn ${spawn.feet.x.toFixed(1)}, ${spawn.feet.y.toFixed(2)}, ` +

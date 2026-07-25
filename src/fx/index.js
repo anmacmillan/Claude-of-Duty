@@ -164,12 +164,7 @@ export class FxSystem {
       this._off.push(off);
     };
     this._off = [];
-    on('bullet:impact', (e) => this.onImpact(e));
-    on('bullet:tracer', (e) => this.tracer(e.from, e.to, e.speed));
-    on('weapon:fire', (e) => this.onWeaponFire(e));
-    on('weapon:shell', (e) => this.spawnShell(e.position, e.velocity, e));
     on('explosion', (e) => this.explosion(e));
-    on('actor:death', (e) => this.onActorDeath(e));
     on('player:land', (e) => this.onLand(e));
     on('player:footstep', (e) => this.onFootstep(e));
 

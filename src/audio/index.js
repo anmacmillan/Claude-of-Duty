@@ -517,18 +517,10 @@ export class AudioSystem {
     const ev = ctx.events;
     const on = (name, fn) => this._offs.push(ev.on(name, fn));
 
-    on('weapon:fire', (p) => this._onFire(p));
-    on('weapon:reload', (p) => this._onReload(p));
-    on('weapon:shell', (p) => this._onShell(p));
-    on('bullet:impact', (p) => this._onImpact(p));
-    on('bullet:tracer', (p) => this._onTracer(p));
     on('explosion', (p) => this._onExplosion(p));
     on('player:footstep', (p) => this._onFootstep(p));
     on('player:land', (p) => this._onLand(p));
     on('player:state', (p) => this._onPlayerState(p));
-    on('damage:dealt', (p) => this._onDamageDealt(p));
-    on('damage:taken', (p) => this._onDamageTaken(p));
-    on('actor:death', (p) => this._onDeath(p));
     // Optional: emitted by `ai` if it wants scripted chatter.
     on('ai:bark', (p) => this.bark(p?.kind ?? 'spot', p?.position, { voice: p?.voice ?? 0 }));
   }
