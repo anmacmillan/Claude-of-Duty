@@ -14,6 +14,7 @@ import { AudioSystem } from './audio/index.js';
 
 import { installShotApi } from './dev/shots.js';
 import { prewarm } from './core/prewarm.js';
+import { installTouch, isTouchDevice } from './core/touch.js';
 
 const params = new URLSearchParams(location.search);
 const capture = params.get('capture') === '1';
@@ -23,8 +24,14 @@ const capture = params.get('capture') === '1';
 // free-run. See the long comment in src/dev/shots.js.
 const lockstep = capture && params.get('lockstep') === '1';
 
+// A finger on the glass means a mobile GPU and no pointer lock. Both are
+// decided here, before any subsystem builds a render target, and both can be
+// overridden from the URL: ?q=ultra to force quality, ?touch=1 to bring the
+// on-screen controls up on a desktop for testing.
+const touchDevice = params.get('touch') === '1' || (params.get('touch') !== '0' && isTouchDevice());
+
 const config = createConfig({
-  quality: params.get('q') ?? 'ultra',
+  quality: params.get('q') ?? (touchDevice ? 'potato' : 'ultra'),
   deterministic: capture,
 });
 
@@ -59,6 +66,12 @@ BOOT FAILURE\n\n${err.stack ?? err.message}</pre>`
 }
 
 const shotApi = installShotApi(engine, { capture, lockstep });
+
+// After init: the input instance exists, and the overlay must sit above the
+// canvas the engine has by now taken over. Skipped under capture so the
+// screenshot harness never photographs a thumbstick.
+const touchUi = capture ? null : installTouch(engine.ctx.input, { force: params.get('touch') === '1' });
+if (touchUi) console.info('[boot] touch controls installed');
 
 // Compile every shader permutation before the frame loop starts. Measured: without
 // this, 86 programs compile lazily during play, up to 30 on one frame, producing

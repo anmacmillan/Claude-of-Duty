@@ -19,6 +19,31 @@ export const UNITS = {
 };
 
 export const QUALITY_PRESETS = {
+  /**
+   * iPad and other mobile GPUs. Everything that costs a full-screen pass is
+   * off: no TAA, no ground-truth AO, no screen-space reflections, no
+   * volumetrics, no motion blur. What survives is the part that carries the
+   * look — procedural PBR materials, the physical sky, and one shadow cascade
+   * set small enough to fit a tile-based GPU's budget.
+   *
+   * `low` was still a desktop preset: 1024² shadows across three cascades and
+   * a 2000-particle budget will not hold 30 fps on an older iPad.
+   */
+  potato: {
+    renderScale: 0.5,
+    shadowMapSize: 512,
+    cascades: 2,
+    shadowDistance: 38,
+    taa: false,
+    gtao: false,
+    ssr: false,
+    volumetrics: false,
+    motionBlur: false,
+    bloom: false,
+    anisotropy: 1,
+    particleBudget: 400,
+    decalBudget: 16,
+  },
   low: {
     renderScale: 0.72,
     shadowMapSize: 1024,

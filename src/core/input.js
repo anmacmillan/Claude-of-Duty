@@ -51,6 +51,9 @@ export class Input {
     this.gamepadIndex = null;
     this.stick = { moveX: 0, moveY: 0, lookX: 0, lookY: 0 };
 
+    /** Set by src/core/touch.js on coarse-pointer devices; null otherwise. */
+    this.touch = null;
+
     this._bound = {
       keydown: this._onKeyDown.bind(this),
       keyup: this._onKeyUp.bind(this),
@@ -183,7 +186,13 @@ export class Input {
     const pads = navigator.getGamepads?.() ?? [];
     const pad = pads[this.gamepadIndex ?? 0] ?? pads.find(Boolean);
     if (!pad) {
-      this.stick.moveX = this.stick.moveY = this.stick.lookX = this.stick.lookY = 0;
+      // A touch stick occupies the same slot as a gamepad's left stick, so it
+      // is written here rather than clobbered by the no-gamepad reset. Look is
+      // delta-driven on touch (see addLook), not axis-driven.
+      const t = this.touch;
+      this.stick.moveX = t ? t.moveX : 0;
+      this.stick.moveY = t ? t.moveY : 0;
+      this.stick.lookX = this.stick.lookY = 0;
       return;
     }
     const dz = (v) => (Math.abs(v) < 0.16 ? 0 : (v - Math.sign(v) * 0.16) / 0.84);
@@ -208,6 +217,28 @@ export class Input {
     if (!codes) return false;
     for (const c of codes) if (this._pressed.has(c)) return true;
     return false;
+  }
+
+  /**
+   * Add raw pointer delta, in the same units and frame timing as mousemove.
+   * Touch look and any future stylus path go through here so the sensitivity
+   * setting applies once, in beginFrame, to every source.
+   */
+  addLook(dx, dy) {
+    if (!this.enabled || this.frozen) return;
+    this._rawLook.x += dx;
+    this._rawLook.y += dy;
+  }
+
+  /** Synthesise a key press from a source that is not the keyboard. */
+  injectDown(code) {
+    if (!this.enabled || !code) return;
+    this._pendingDown.add(code);
+  }
+
+  injectUp(code) {
+    if (!code) return;
+    this._pendingUp.add(code);
   }
 
   held(code) {
