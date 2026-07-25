@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-    <title>OVERWATCH — Tactical Shooter</title>
+    <title>A world to wander</title>
     <style>
       :root { color-scheme: dark; }
       * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -29,6 +29,11 @@
         color: #f0a0a0; white-space: pre-wrap; text-align: left; background: rgba(255,255,255,.04);
         padding: 12px; border-radius: 8px; }
       #boot .slow { display: none; font-size: 12px; color: #8d877d; max-width: 420px; line-height: 1.5; }
+      /* Always on screen, over everything, including a black canvas. It is the
+         only way to know from a photograph which build a device is running. */
+      #build { position: fixed; left: 8px; bottom: 6px; z-index: 500; pointer-events: none;
+        font: 11px/1 ui-monospace, monospace; color: rgba(255,255,255,.55);
+        text-shadow: 0 1px 2px rgba(0,0,0,.9); }
     </style>
   </head>
   <body>
@@ -41,6 +46,10 @@
       <div class="slow"></div>
       <pre class="err"></pre>
     </div>
+    <div id="build">build 9</div>
+    <script>
+      window.__BUILD__ = 9;
+    </script>
     <script>
       // Deliberately not a module: this must run and be able to report even if
       // the module graph fails to parse or a subsystem throws during import.
@@ -69,7 +78,20 @@
           done: function () {
             done = true;
             el.classList.add('gone');
-            setTimeout(function () { el.remove(); }, 600);
+            setTimeout(function () { if (!el.dataset.pinned) el.remove(); }, 600);
+          },
+          // Force the panel back up after a nominally successful boot. This is
+          // the case that matters most: the engine believes it is running, and
+          // the screen is black anyway.
+          report: function (text) {
+            if (!document.body.contains(el)) document.body.appendChild(el);
+            el.dataset.pinned = '1';
+            el.classList.remove('gone');
+            el.querySelector('h1').textContent = 'Diagnostic';
+            stage.textContent = 'Send Dad a photo of this';
+            el.querySelector('.bar').style.display = 'none';
+            err.style.display = 'block';
+            err.textContent = String(text);
           },
         };
 

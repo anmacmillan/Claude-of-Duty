@@ -177,6 +177,44 @@ if (lockstep) {
     requestAnimationFrame(readyProbe);
   };
   requestAnimationFrame(readyProbe);
+
+  // A black screen must explain itself, and there are two very different black
+  // screens. If frames never land, the engine is stuck. If frames DO land and
+  // the screen is still black, the frame is being drawn and then lost somewhere
+  // in the post chain. probeHdr reads the HDR buffer straight back off the GPU
+  // and tells the two apart without anyone having to hold the device.
+  window.__WHYBLACK__ = () => {
+    const render = engine.ctx.peek('render');
+    let hdr = null;
+    try {
+      hdr = render?.probeHdr?.(0.2, 0.2, 0.8, 0.8) ?? null;
+    } catch (e) {
+      hdr = { error: String(e) };
+    }
+    const lit = hdr && hdr.max > 0.001;
+    return {
+      build: window.__BUILD__,
+      framesLanded: engine.time?.frame ?? 0,
+      ready: !!window.__READY__,
+      quality: config.quality,
+      prewarm: warmup.reason ?? 'ran',
+      hdrAverage: hdr && !hdr.error ? { r: +hdr.r.toFixed(4), g: +hdr.g.toFixed(4), b: +hdr.b.toFixed(4), max: +hdr.max.toFixed(4) } : hdr,
+      verdict: !engine.time?.frame
+        ? 'engine never rendered a frame'
+        : lit
+          ? 'the world IS being rendered; it is lost in the post chain or the canvas'
+          : 'frames render but the HDR buffer is black; the scene or lighting is not drawing',
+      device: window.__DIAG__,
+    };
+  };
+
+  // Only speak up if something is actually wrong. A healthy boot says nothing.
+  setTimeout(() => {
+    const r = window.__WHYBLACK__();
+    const healthy = r.framesLanded > 0 && r.hdrAverage && !r.hdrAverage.error && r.hdrAverage.max > 0.001;
+    if (healthy && params.get('diag') !== '1') return;
+    boot.report(JSON.stringify(r, null, 2));
+  }, 12000);
 }
 
 window.__ENGINE__ = engine;
