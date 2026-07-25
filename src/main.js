@@ -9,6 +9,7 @@ import { PhysicsSystem } from './physics/index.js';
 import { PlayerSystem } from './player/index.js';
 import { FxSystem } from './fx/index.js';
 import { UiSystem } from './ui/index.js';
+import { ExplorerSystem } from './explorer/index.js';
 import { AudioSystem } from './audio/index.js';
 
 import { installShotApi } from './dev/shots.js';
@@ -41,7 +42,8 @@ engine
   .add(PlayerSystem)
   .add(FxSystem)
   .add(UiSystem)
-  .add(AudioSystem);
+  .add(AudioSystem)
+  .add(ExplorerSystem);
 
 try {
   await engine.init();

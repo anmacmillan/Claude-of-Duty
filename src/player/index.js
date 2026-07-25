@@ -328,11 +328,10 @@ export class PlayerSystem {
       this._landPayload.surface = m.landEvent.surface;
       this._landPayload.position.copy(m.position);
       this.ctx.events.emit('player:land', this._landPayload);
-      // Fall damage — CoD only hurts you past a real drop.
-      const L = CAMERA.land;
-      if (speed > L.damageSpeed) {
-        this.health.damage((speed - L.damageSpeed) * L.damagePerSpeed, null, { type: 'fall' });
-      }
+      // Fall damage is off in the explorer build. Nothing in this world can
+      // hurt you, and a ten-year-old jumping off a roof to see what happens
+      // should land with a thump and a camera dip, not a red screen.
+      // The camera's landing impulse (rig.onLand above) still sells the drop.
       if (mag > 0.35) this.movement._footHold = FOOTSTEP.landHold;
     }
 
