@@ -199,11 +199,14 @@ if (lockstep) {
       quality: config.quality,
       prewarm: warmup.reason ?? 'ran',
       hdrAverage: hdr && !hdr.error ? { r: +hdr.r.toFixed(4), g: +hdr.g.toFixed(4), b: +hdr.b.toFixed(4), max: +hdr.max.toFixed(4) } : hdr,
+      // Nothing here can see the glass, so the verdict must not claim to. It
+      // says what is true inside the GPU and leaves the last step to whoever
+      // is looking at the screen.
       verdict: !engine.time?.frame
-        ? 'engine never rendered a frame'
+        ? 'BAD: the engine never rendered a frame at all'
         : lit
-          ? 'the world IS being rendered; it is lost in the post chain or the canvas'
-          : 'frames render but the HDR buffer is black; the scene or lighting is not drawing',
+          ? 'The world is drawing and the HDR buffer has light in it. If the screen is STILL black, the frame is being lost after this point, in the post chain or the canvas.'
+          : 'BAD: frames are rendering but the HDR buffer is black, so the scene or the lighting is not drawing.',
       device: window.__DIAG__,
     };
   };
