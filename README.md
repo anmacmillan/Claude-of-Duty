@@ -1,11 +1,19 @@
-# Claude of Duty
+# A world to wander
 
-Get updates [here](https://shumer.dev/newsletter).
+**Play: https://anmacmillan.github.io/Claude-of-Duty/**
 
-A first-person shooter built in the browser with Three.js r180 and WebGL2. Roughly
-55k lines across 11 subsystems, written by a fleet of AI agents under orchestration.
+A fork of [mshumer/Claude-of-Duty](https://github.com/mshumer/Claude-of-Duty) with
+the shooting taken out. My daughter said she would like a beautiful world she could
+explore, and the original had already built one: the expensive half of that repo is
+a renderer, a physical sky, a procedural material forge and a market street, none of
+which cares whether anyone is being shot at.
 
-**There are no art assets.** Every texture, mesh, animation and sound is generated
+So `weapons` and `ai` are gone, about 17k lines. The street has been de-warred: no
+jersey barriers, no sandbag emplacements, no burnt-out cars, no bullet pocks, and
+the gate at the end is a town gate rather than a checkpoint. Nothing in it can hurt
+you and there is nothing to win.
+
+**There are still no art assets.** Every texture, mesh and sound is generated
 procedurally at load time from code. No models, no HDRIs, no image files, no audio
 files. The only runtime dependency is `three`.
 
@@ -14,8 +22,24 @@ npm install
 npm run dev          # http://127.0.0.1:5173
 ```
 
-Click the canvas to lock the cursor. WASD move, mouse aim, LMB fire, RMB ADS,
-R reload, Shift sprint, Ctrl crouch, Space jump, Q/E lean, Esc release.
+Click the canvas to lock the cursor. WASD to walk, mouse to look, Shift sprint,
+Ctrl crouch, Space jump, Esc to release.
+
+| key | |
+|---|---|
+| `H` | hide and show the HUD |
+| `[` `]` | wind the sun back and forward (hold to scrub) |
+| `T` | let time run, and hold it again |
+| `F` | free-fly, and land again. Space up, Ctrl down, Shift fast |
+
+On a phone or tablet the same controls appear on screen, because Safari on iOS has
+no pointer lock. Left thumb anywhere on the left to walk, drag on the right to look.
+
+| query | |
+|---|---|
+| `?q=potato\|low\|medium\|high\|ultra` | force a quality preset |
+| `?touch=1` | force the on-screen controls on a desktop |
+| `?diag=1` | show the device and render diagnostic |
 
 ## What's in it
 
@@ -26,11 +50,10 @@ R reload, Shift sprint, Ctrl crouch, Space jump, Q/E lean, Esc release.
 | `sky` | Atmospheric scattering, time of day, PMREM environment generation, volumetric fog and light shafts |
 | `world` | ~120×120 m market street: modular building kit with real wall thickness, enterable interiors, several hundred instanced props |
 | `physics` | Written from scratch, no library. Binned-SAH BVH (29k tris → 14k nodes in 22 ms, 0.25 µs/raycast), swept-capsule character controller with a 5-plane crease stack, impulse rigid bodies with CCD, PBD ragdolls, multi-layer bullet penetration |
-| `player` | Movement state machine, slide/mantle/lean, camera feel |
-| `weapons` | Procedural weapon geometry, viewmodel rig, ADS, spring recoil, procedural reloads, ballistics with travel time and drop |
-| `fx` | GPU particles, decals, tracers, muzzle flash, explosions |
-| `ai` | Skinned soldiers, navmesh pathing, perception, cover behaviour, ragdoll death |
-| `ui` | DOM/CSS HUD: crosshair, hitmarkers, minimap, compass, killfeed |
+| `player` | Movement state machine, slide/mantle/lean, camera feel. Fall damage removed |
+| `fx` | GPU particles, decals, ambient haze, lights |
+| `explorer` | *Added.* Time-of-day scrubbing, HUD toggle, free-fly camera. Drives `sky`, `ui` and `player` through their public APIs only |
+| `ui` | DOM/CSS HUD, rewritten to navigation only: minimap, compass, world markers, prompts, menu |
 | `audio` | Web Audio synthesis — no sound files. Layered weapon fire, convolution reverb, HRTF spatialisation, occlusion |
 
 `ARCHITECTURE.md` is the contract the agents worked against: subsystem interface,
@@ -48,6 +71,11 @@ The interesting part of this repo is arguably the harness, not the game.
 | `tools/imagediff.mjs` | Per-pixel gate. Exits non-zero if any pixel moved |
 | `tools/profile.mjs` | Gameplay profiler at real device pixel ratio. Frame-time *distribution* and hitch attribution via per-frame WebGL program counts |
 | `tools/playtest.mjs` | Scripted movement/fire smoke test |
+| `tools/verify-explorer.mjs` | *Added.* Drives H, T, `[`, `]` and F in a real browser and asserts the state transitions |
+| `tools/verify-touch.mjs` | *Added.* Drives the on-screen controls with synthetic `TouchEvent`s |
+| `tools/verify-portrait-buttons.mjs` | *Added.* Proves a touch on CROUCH presses crouch and does not start the walk stick |
+| `tools/verify-phone.mjs` | *Added.* Boots at phone viewports and reports where the controls actually land |
+| `tools/verify-pages.mjs` | *Added.* Boots the published build as a touch client |
 
 Two findings worth recording, because both invalidated earlier measurements:
 
@@ -85,6 +113,11 @@ Shader pre-warm (`src/core/prewarm.js`) is what removed the stalls. Making it
 otherwise shifted output.
 
 ## Honest assessment
+
+*Everything from here down is the upstream project's own account of itself, kept
+because it is the most useful writing in the repo. It judges a shooter that this
+fork no longer contains: the hands, weapons and characters it criticises have all
+been deleted. The renderer, sky and materials it describes are what this fork kept.*
 
 The goal was to match a modern Call of Duty. **It does not.**
 
