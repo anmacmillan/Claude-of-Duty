@@ -14,6 +14,7 @@ import {
   groundY,
   isOpen,
 } from './dressing.js';
+import { buildHorizon } from './horizon.js';
 
 /**
  * WORLD — level geometry, the modular building kit, props, set dressing and
@@ -138,6 +139,23 @@ export class WorldSystem {
     A.finalize(this.root, physics);
     A.releaseCache();
 
+    // The land beyond the walls. Built in level space and given the same
+    // transform the Assembler uses, so the valley lines up with the gate.
+    // Added straight to the root rather than through the Assembler: it wants
+    // its own material, no collision and no shadow pass, and merging it into
+    // the town's batches would give it all three.
+    this.horizon = buildHorizon(rng);
+    this.horizon.mesh.matrix.copy(A.xform);
+    this.horizon.mesh.matrixWorld.copy(A.xform);
+    this.root.add(this.horizon.mesh);
+    // Synced every frame from update(), NOT here and not off `sky:changed`.
+    // `sky` is not one of this system's deps, so it can initialise after this
+    // runs: peek() returns null, the first sync is skipped, and sky:changed has
+    // already fired inside sky's own init before there is anything subscribed.
+    // The haze then sits on its placeholder colour forever, which is exactly
+    // how every hill came out white. Three multiplies a frame buys certainty.
+    this._syncHorizonHaze(ctx);
+
     // -------------------------------------------------------------- queries --
     this._v = new THREE.Vector3();
     this._inv = new THREE.Matrix4().copy(A.xform).invert();
@@ -158,6 +176,35 @@ export class WorldSystem {
         `${(A.stats.instTris / 1000).toFixed(0)}k instanced tris in ${A.stats.instances} instances, ` +
         `${A.stats.drawCalls} draw calls, ${(A.stats.collideTris / 1000).toFixed(1)}k collision tris`
     );
+  }
+
+  /**
+   * Keep the distance haze on the same clock as the sky. Without this the
+   * hills stay dawn-blue through a red sunset and read as a painted backdrop,
+   * which is precisely the film-set feeling the horizon exists to remove.
+   */
+  _syncHorizonHaze(ctx) {
+    if (!this.horizon) return;
+    const sky = ctx.peek('sky');
+    if (!sky) return;
+    this._hazeColor = this._hazeColor ?? new THREE.Color();
+
+    // `ambientColor` has the right HUE — blue by day, orange at dusk, near
+    // black at night, which is exactly how distant land shifts — but it is a
+    // whole-sky irradiance figure, not a radiance. Measured against the HDR
+    // buffer it runs about 10x the sky's actual radiance:
+    //
+    //   hour   ambientColor            sky in the HDR buffer
+    //   08.0   0.248 0.386 0.690       0.037 0.032 0.024
+    //   16.5   0.245 0.380 0.679       0.058 0.044 0.029
+    //   19.2   0.465 0.284 0.141       0.029 0.012 0.003
+    //   01.5   0.031 0.044 0.087       0.003 0.002 0.002
+    //
+    // Feeding it in raw blew every hill out to white. This factor lands the
+    // haze in the same range as the sky it is supposed to be converging on.
+    const HAZE_FROM_AMBIENT = 0.11;
+    this._hazeColor.copy(sky.ambientColor).multiplyScalar(HAZE_FROM_AMBIENT);
+    this.horizon.setHaze(this._hazeColor);
   }
 
   // ----------------------------------------------------------------- lights --
@@ -312,6 +359,8 @@ export class WorldSystem {
     // Distance LOD for the scatter clouds: one bounding-sphere test per batch.
     this.A?.updateLod(ctx.camera);
 
+    this._syncHorizonHaze(ctx);
+
     // Street lamps come on as the sun goes down, driven by the sky's real solar
     // altitude rather than a timer, so it is right at any time of day.
     const sky = this._sky ?? (this._sky = ctx.peek('sky'));
@@ -432,6 +481,10 @@ export class WorldSystem {
   }
 
   dispose() {
+    this._unsubHorizon?.();
+    this._unsubHorizon = null;
+    this.horizon?.dispose();
+    this.horizon = null;
     this.A?.dispose();
     this.root?.parent?.remove(this.root);
     for (const l of this._ballast ?? []) l.parent?.remove(l);
